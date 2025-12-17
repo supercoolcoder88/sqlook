@@ -1,4 +1,4 @@
-package commandOrchestrator
+package orchestrator
 
 import (
 	"context"
@@ -22,7 +22,7 @@ func CommandOrchestrator(ctx context.Context, cmd *cli.Command) error {
 	db, err := sql.Open("sqlite3", "./test.db")
 
 	if err != nil {
-		return fmt.Errorf(err.Error())
+		return fmt.Errorf("%v", err.Error())
 	}
 
 	defer db.Close()
@@ -31,7 +31,7 @@ func CommandOrchestrator(ctx context.Context, cmd *cli.Command) error {
 	q := cmd.String("query")
 
 	if q != "" {
-		if err := queryFlagOrchestrator(q); err != nil {
+		if err := queryOrchestrator(q, db); err != nil {
 			return err
 		}
 		return nil
@@ -48,7 +48,7 @@ func CommandOrchestrator(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func queryFlagOrchestrator(query string, db *sql.DB) error {
+func queryOrchestrator(query string, db *sql.DB) error {
 	// Query orchestration
 	// SELECT
 	isSelect, err := regexp.MatchString("SELECT", query)
@@ -79,6 +79,16 @@ func queryFlagOrchestrator(query string, db *sql.DB) error {
 	}
 
 	return nil
+}
+
+func selectQuery(query string, db *sql.DB) (*sql.Rows, error) {
+	rows, err := db.Query(query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
 }
 
 func commandInputValidator(cmd *cli.Command) error {

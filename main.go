@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
-	"sqlook/commandOrchestrator"
+	"sqlook/orchestrator"
 
 	"github.com/urfave/cli/v3"
 )
@@ -15,7 +15,7 @@ func main() {
 		Name:    "sqlook",
 		Usage:   "Testing utility to look into SQLite databases locally",
 		Version: "0.1.0",
-		Action:  commandOrchestrator.CommandOrchestrator,
+		Action:  orchestrator.CommandOrchestrator,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "query",
