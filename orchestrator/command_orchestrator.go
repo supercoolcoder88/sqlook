@@ -3,8 +3,10 @@ package orchestrator
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/urfave/cli/v3"
@@ -31,7 +33,7 @@ func CommandOrchestrator(ctx context.Context, cmd *cli.Command) error {
 	q := cmd.String("query")
 
 	if q != "" {
-		if err := queryOrchestrator(q, db); err != nil {
+		if _, err := queryOrchestrator(q, db); err != nil {
 			return err
 		}
 		return nil
@@ -48,37 +50,45 @@ func CommandOrchestrator(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func queryOrchestrator(query string, db *sql.DB) error {
+type QueryResponse struct {
+	isInsertSuccess bool
+	rows            *sql.Rows
+}
+
+func queryOrchestrator(query string, db *sql.DB) (QueryResponse, error) {
 	// Query orchestration
 	// SELECT
-	isSelect, err := regexp.MatchString("SELECT", query)
+	f := strings.Fields(strings.TrimSpace(query))
 
-	if err != nil {
-		return fmt.Errorf("regex failed: %v", err)
+	if len(f) == 0 {
+		return QueryResponse{}, errors.New("empty query")
 	}
+
+	command := strings.ToUpper(f[0])
 
 	// TODO : Handle query
-	if isSelect {
-		// rows, err := db.Query(query)
+	switch command {
+	case "SELECT":
+		rows, err := selectQuery(query, db)
+		if err != nil {
+			return QueryResponse{}, fmt.Errorf("query failed: %v", err)
+		}
+
+		return QueryResponse{rows: rows}, nil
+
+	case "INSERT":
+		err := insertQuery(query, db)
+		if err != nil {
+			return QueryResponse{}, fmt.Errorf("query failed: %v", err)
+		}
+
+		return QueryResponse{isInsertSuccess: true}, nil
+
+	default:
+		fmt.Print("Invalid SQL query")
 	}
 
-	// INSERT
-	isInsert, err := regexp.MatchString("INSERT", query)
-
-	if err != nil {
-		return fmt.Errorf("regex failed: %v", err)
-	}
-
-	// TODO: Handle query
-	if isInsert {
-
-	}
-
-	if _, err := db.Exec(query); err != nil {
-		return fmt.Errorf("query failed: %v", err)
-	}
-
-	return nil
+	return QueryResponse{}, nil
 }
 
 func selectQuery(query string, db *sql.DB) (*sql.Rows, error) {
@@ -89,6 +99,16 @@ func selectQuery(query string, db *sql.DB) (*sql.Rows, error) {
 	}
 
 	return rows, nil
+}
+
+func insertQuery(query string, db *sql.DB) error {
+	_, err := db.Exec(query)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func commandInputValidator(cmd *cli.Command) error {

@@ -32,3 +32,17 @@ func CreateTestTablesWithData(db *sql.DB) {
 	`, "Will", 24)
 
 }
+
+func CreateEmptyTestTables(db *sql.DB) {
+	db.Exec(`
+		DROP TABLE users;
+	`)
+
+	db.Exec(`
+	CREATE TABLE users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		age INTEGER
+	);
+	`)
+}
