@@ -22,6 +22,11 @@ func main() {
 				Aliases: []string{"q"},
 				Usage:   "SQLite query",
 			},
+			&cli.BoolFlag{
+				Name:    "create",
+				Aliases: []string{"c"},
+				Usage:   "Create db if not exists",
+			},
 		},
 	}
 

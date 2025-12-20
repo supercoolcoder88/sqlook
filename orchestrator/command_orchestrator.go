@@ -18,10 +18,10 @@ func CommandOrchestrator(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	fmt.Print("\nAll good\n")
+	f := cmd.Args().Get(0)
 
 	// Load sqlite db file
-	db, err := sql.Open("sqlite3", "./test.db")
+	db, err := sql.Open("sqlite3", f)
 
 	if err != nil {
 		return fmt.Errorf("%v", err.Error())
@@ -33,9 +33,52 @@ func CommandOrchestrator(ctx context.Context, cmd *cli.Command) error {
 	q := cmd.String("query")
 
 	if q != "" {
-		if _, err := queryOrchestrator(q, db); err != nil {
+		f := strings.Fields(strings.TrimSpace(q))
+
+		if len(f) == 0 {
+			return errors.New("empty query")
+		}
+
+		command := strings.ToUpper(f[0])
+
+		res, err := queryOrchestrator(q, db, command)
+
+		if err != nil {
+			fmt.Printf("%v failed\n", command)
 			return err
 		}
+
+		if command == "SELECT" {
+			cols, err := res.rows.Columns()
+
+			if err != nil {
+				return err
+			}
+
+			vals := make([]any, len(cols))
+			scanArgs := make([]any, len(cols))
+			for i := range vals {
+				scanArgs[i] = &vals[i]
+			}
+
+			for res.rows.Next() {
+				if err := res.rows.Scan(scanArgs...); err != nil {
+					return err
+				}
+
+				for i, colName := range cols {
+					switch v := vals[i].(type) {
+					case nil:
+						fmt.Printf("%s: NULL | ", colName)
+					case []byte:
+						fmt.Printf("%s: %s | ", colName, string(v))
+					default:
+						fmt.Printf("%s: %v | ", colName, v)
+					}
+				}
+			}
+		}
+
 		return nil
 	}
 
@@ -50,45 +93,33 @@ func CommandOrchestrator(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-type QueryResponse struct {
-	isInsertSuccess bool
-	rows            *sql.Rows
+type queryResponse struct {
+	isSuccess bool
+	rows      *sql.Rows
 }
 
-func queryOrchestrator(query string, db *sql.DB) (QueryResponse, error) {
+func queryOrchestrator(query string, db *sql.DB, command string) (queryResponse, error) {
 	// Query orchestration
-	// SELECT
-	f := strings.Fields(strings.TrimSpace(query))
-
-	if len(f) == 0 {
-		return QueryResponse{}, errors.New("empty query")
-	}
-
-	command := strings.ToUpper(f[0])
-
-	// TODO : Handle query
 	switch command {
 	case "SELECT":
 		rows, err := selectQuery(query, db)
 		if err != nil {
-			return QueryResponse{}, fmt.Errorf("query failed: %v", err)
+			return queryResponse{isSuccess: false}, fmt.Errorf("query failed: %v", err)
 		}
 
-		return QueryResponse{rows: rows}, nil
+		return queryResponse{isSuccess: true, rows: rows}, nil
 
-	case "INSERT":
-		err := insertQuery(query, db)
+	case "INSERT", "CREATE":
+		err := execQuery(query, db)
 		if err != nil {
-			return QueryResponse{}, fmt.Errorf("query failed: %v", err)
+			return queryResponse{isSuccess: false}, fmt.Errorf("query failed: %v", err)
 		}
 
-		return QueryResponse{isInsertSuccess: true}, nil
+		return queryResponse{isSuccess: true}, nil
 
 	default:
-		fmt.Print("Invalid SQL query")
+		return queryResponse{}, fmt.Errorf("error: invalid SQL query")
 	}
-
-	return QueryResponse{}, nil
 }
 
 func selectQuery(query string, db *sql.DB) (*sql.Rows, error) {
@@ -101,7 +132,7 @@ func selectQuery(query string, db *sql.DB) (*sql.Rows, error) {
 	return rows, nil
 }
 
-func insertQuery(query string, db *sql.DB) error {
+func execQuery(query string, db *sql.DB) error {
 	_, err := db.Exec(query)
 
 	if err != nil {
