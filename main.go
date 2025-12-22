@@ -15,7 +15,7 @@ func main() {
 		Name:    "sqlook",
 		Usage:   "Testing utility to look into SQLite databases locally",
 		Version: "0.1.0",
-		Action:  orchestrator.CommandOrchestrator,
+		Action:  orchestrator.HandleCommands,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "query",
