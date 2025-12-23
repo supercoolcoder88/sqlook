@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"regexp"
 	"sqlook/query"
 	"strings"
 
@@ -47,15 +45,16 @@ func HandleCommands(ctx context.Context, cmd *cli.Command) error {
 		rows, err := query.Execute(command, q, db)
 
 		if err != nil {
-			fmt.Fprintf(os.Stdout, "query failed", command)
+			fmt.Fprintf(cmd.Writer, "query failed")
 			return err
 		}
 
 		if command == "SELECT" {
-			return printSelectResponse(os.Stdout, rows)
+			printSelectResponse(cmd.Writer, rows)
+			return nil
 		}
 
-		fmt.Fprintf(os.Stdout, "%s success", command)
+		fmt.Fprintf(cmd.Writer, "%s success", command)
 	}
 
 	return nil
@@ -93,18 +92,14 @@ func printSelectResponse(w io.Writer, rows *sql.Rows) error {
 }
 
 func commandInputValidator(cmd *cli.Command) error {
-	// Must include only file name
 	if cmd.NArg() != 1 {
-		return fmt.Errorf("ERROR: no file name provided")
+		return errors.New("usage: <command> [flags] <database.db>")
 	}
 
 	fileName := cmd.Args().Get(0)
 
-	// Must match SQLite file format
-	matched, err := regexp.MatchString("[a-z,A-Z,0-9].db", fileName)
-
-	if !matched || err != nil {
-		return fmt.Errorf("ERROR: file must end with .db")
+	if !strings.HasSuffix(strings.ToLower(fileName), ".db") {
+		return fmt.Errorf("invalid file '%s': extension must be .db", fileName)
 	}
 
 	return nil
