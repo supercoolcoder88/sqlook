@@ -7,7 +7,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func Test_Execute(t *testing.T) {
+func Test_ExecuteSuccess(t *testing.T) {
 	db, _ := sql.Open("sqlite3", ":memory:")
 	defer db.Close()
 
@@ -76,5 +76,16 @@ func Test_Execute(t *testing.T) {
 	}
 	if age != 99 {
 		t.Errorf("expected age 99, got %d", age)
+	}
+}
+
+func Test_ExecuteErrorBadQuery(t *testing.T) {
+	db, _ := sql.Open("sqlite3", ":memory:")
+	defer db.Close()
+
+	_, err := Execute("INVALID", "SELECT * FROM users", db)
+
+	if err == nil {
+		t.Fatalf("expected error, got nil")
 	}
 }

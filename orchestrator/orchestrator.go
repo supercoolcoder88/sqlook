@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"regexp"
 	"sqlook/query"
 	"strings"
@@ -45,22 +47,22 @@ func HandleCommands(ctx context.Context, cmd *cli.Command) error {
 		rows, err := query.Execute(command, q, db)
 
 		if err != nil {
+			fmt.Fprintf(os.Stdout, "query failed", command)
 			return err
 		}
 
 		if command == "SELECT" {
-			printSelectResponse(rows)
-		} else {
-			fmt.Printf("%s success", command)
+			return printSelectResponse(os.Stdout, rows)
 		}
+
+		fmt.Fprintf(os.Stdout, "%s success", command)
 	}
 
 	return nil
 }
 
-func printSelectResponse(rows *sql.Rows) error {
+func printSelectResponse(w io.Writer, rows *sql.Rows) error {
 	cols, err := rows.Columns()
-
 	if err != nil {
 		return err
 	}
@@ -79,11 +81,11 @@ func printSelectResponse(rows *sql.Rows) error {
 		for i, colName := range cols {
 			switch v := vals[i].(type) {
 			case nil:
-				fmt.Printf("%s: NULL | ", colName)
+				fmt.Fprintf(w, "| %s: NULL | ", colName)
 			case []byte:
-				fmt.Printf("%s: %s | ", colName, string(v))
+				fmt.Fprintf(w, "| %s: %s | ", colName, string(v))
 			default:
-				fmt.Printf("%s: %v | ", colName, v)
+				fmt.Fprintf(w, "| %s: %v | ", colName, v)
 			}
 		}
 	}
